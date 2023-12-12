@@ -1,0 +1,22 @@
+credentials:
+  usernames:
+    default:
+      email: default_user@email.com
+      name: Default User
+      password: "$2b$12$moXdAB9aCzKYmsZp3CKP/uSsPmuqm6H/1YqvH89/rxg00RWoMtlDO" # default
+    admin:
+      email: admin@email.com
+      name: Admin User
+      password: "$2b$12$j8NgsG2YzOY7LEYADj.06uIJQ5fvdV2vKM7R/LNRJ4XramqAFINEy" # admin
+    johannes:
+      email: johannes@tuwien.ac.at
+      name: Johannes Windischbauer
+      password: "$2b$12$moXdAB9aCzKYmsZp3CKP/uSsPmuqm6H/1YqvH89/rxg00RWoMtlDO" # default
+    user:
+      email: user@example.com
+      name: User
+      password: "$2b$12$moXdAB9aCzKYmsZp3CKP/uSsPmuqm6H/1YqvH89/rxg00RWoMtlDO" # default
+cookie:
+  expiry_days: 30
+  key: some_key
+  name: some_name

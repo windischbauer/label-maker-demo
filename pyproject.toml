@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "label-maker"
+version = "0.1.0"
+description = ""
+authors = ["Johannes Windischbauer <johannes.windischbauer@dynatrace.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.11.6"
+pandas = "^2.1.0"
+scikit-learn = "1.2.0"
+snorkel = "^0.9.9"
+sqlalchemy = "^1.4.7"
+stqdm = "^0.0.5"
+streamlit = "1.28.0"
+streamlit-extras = "^0.3.4"
+streamlit-authenticator = "^0.2.2"
+streamlit-code-editor = "^0.1.5"
+streamlit-tags = "^1.2.8"
+torch = "^2.1.1"
+pytorch-lightning = "1.7.7"
+torchmetrics = "^0.11.4"
+weasel = {git = "https://github.com/autonlab/weasel"}
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+

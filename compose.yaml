@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+#  db:
+#    container_name: ${POSTGRES_CONTAINER_NAME}
+#    image: postgres:14.1-alpine
+#    restart: always
+#    env_file:
+#      - .env
+#    ports:
+#      - '5432:5432'
+#    volumes:
+#      - ./data:/var/lib/postgresql/data
+#    networks:
+#      - bridge_nw
+
+  label-generation-demo:
+    container_name: ${FRONTEND_CONTAINER_NAME}
+    build: 
+      context: ./label-generation-demo
+      dockerfile: Dockerfile
+      args:
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        - POSTGRES_DATABASE_NAME=${POSTGRES_DATABASE_NAME}
+        - POSTGRES_HOST=${POSTGRES_HOST}
+        - POSTGRES_PORT=${POSTGRES_PORT}
+    ports:
+      - 8501:8501
+    networks:
+      - bridge_nw
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/database
+      - ./label-generation-data/resources:/app/data
+
+
+  label-generation-surrogate-model:
+    container_name: ${BACKEND_CONTAINER_NAME}
+    build: label-generation-surrogate-model-backend
+    ports: 
+      - 8000:8000
+    depends_on:
+      - label-generation-demo
+    networks:
+      - bridge_nw
+    env_file:
+      - .env
+
+networks:
+  bridge_nw:
+    driver: bridge
+
+volumes:
+  db:
+    driver: local
