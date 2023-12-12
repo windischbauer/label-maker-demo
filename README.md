@@ -9,7 +9,7 @@ please send the resulting database to johannes.windischbauer@tuwien.ac.at and co
 
 ### Prerequisites
 
-Docker needs to be installed on the machine.
+Docker needs to be installed and running on the machine.
 
 ### Docker
 
