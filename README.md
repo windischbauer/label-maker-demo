@@ -1,4 +1,5 @@
 # Welcome to the Label Maker Demo
+Interactive Label Generation for Time Series Data
 
 ## About
 
