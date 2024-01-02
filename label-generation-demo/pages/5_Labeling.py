@@ -169,32 +169,32 @@ def update_training_label(df):
 
 
 update_training_label(df)
-
-df['surrogate model'] = surrogate_predictions
-dfe = st.data_editor(
-    df,
-    column_config={
-        'gold_label': st.column_config.SelectboxColumn(
-            'Gold Label',
-            help='Gold label introduced by hand',
-            options=available_labels,
-            width='small'
-        ),
-        'timeseries': st.column_config.LineChartColumn(
-            'Time Series',
-            help='Time Series',
-            width='medium',
-        ),
-        'training_label': st.column_config.Column(
-            'Training Label',
-        )
-    },
-    disabled=False,
-    use_container_width=True,
-    on_change=(lambda df: db.cache(df, const.LABELING_RUN_DATAFRAME)),
-    args=(df,),
-    key='lb_dfe'
-)
+with st.expander('Results'):
+    df['surrogate model'] = surrogate_predictions
+    dfe = st.data_editor(
+        df,
+        column_config={
+            'gold_label': st.column_config.SelectboxColumn(
+                'Gold Label',
+                help='Gold label introduced by hand',
+                options=available_labels,
+                width='small'
+            ),
+            'timeseries': st.column_config.LineChartColumn(
+                'Time Series',
+                help='Time Series',
+                width='medium',
+            ),
+            'training_label': st.column_config.Column(
+                'Training Label',
+            )
+        },
+        disabled=False,
+        use_container_width=True,
+        on_change=(lambda df: db.cache(df, const.LABELING_RUN_DATAFRAME)),
+        args=(df,),
+        key='lb_dfe'
+    )
 
 changed_gold_labels = dfe.loc[dfe['gold_label'].notnull()].loc[:, ['gold_label']]
 
@@ -237,59 +237,60 @@ if len(goto) > 0:
     switch_page('Time_Series_Analysis')
 
 st.subheader('Labeling Function Analysis')
-st.dataframe(labeler.LF_analysis(), use_container_width=True)
+with st.expander('Labeling Function Analysis'):
+    st.dataframe(labeler.LF_analysis(), use_container_width=True)
 
-# Update gold labels so that changed scores are available
-gold_labels = db.load(GoldLabel, filter=filter_gl)
+    # Update gold labels so that changed scores are available
+    gold_labels = db.load(GoldLabel, filter=filter_gl)
 
-scores_gllm = calculate_surrogate_scores(
-    df.loc[[int(gl.time_series_key) for gl in gold_labels], 'label model'],
-    [gl.label for gl in gold_labels],
-    df.loc[[int(gl.time_series_key) for gl in gold_labels], 'label model'],
-)
+    scores_gllm = calculate_surrogate_scores(
+        df.loc[[int(gl.time_series_key) for gl in gold_labels], 'label model'],
+        [gl.label for gl in gold_labels],
+        df.loc[[int(gl.time_series_key) for gl in gold_labels], 'label model'],
+    )
 
-display_label_model_metrics(scores_gllm)
+    display_label_model_metrics(scores_gllm)
 
-st.markdown('**Features used**')
-st.write(labeler.get_features())
-with st.expander('**Labeling Rules used**'):
-    st.write(lmp.lrs)
+    st.markdown('**Features used**')
+    st.write(labeler.get_features())
+    with st.expander('**Labeling Rules used**'):
+        st.write(lmp.lrs)
 
 st.subheader('Surrogate Model Analysis')
+with st.expander('Surrogate Model Analysis'):
+    empty_scores = {"score_s": {"model": None, "accuracy": None, "precision": None, "recall": None},
+                    "score_l": {"model": None, "accuracy": None, "precision": None, "recall": None}}
+    scores = empty_scores.copy()
+    if len(gold_labels) > 0:
+        scores_s = calculate_surrogate_scores(
+            smp.model.features.loc[[int(gl.time_series_key) for gl in gold_labels], :],
+            [gl.label for gl in gold_labels],
+            sm_model.predict(
+                smp.model.features.loc[[int(gl.time_series_key) for gl in gold_labels], :])
+        )
+        scores['score_s'] = scores_s
+    scores_l = calculate_surrogate_scores(
+        smp.model.features,
+        smp.model.get_definitive_labels(),
+        surrogate_predictions)
+    scores['score_l'] = scores_l
 
-empty_scores = {"score_s": {"model": None, "accuracy": None, "precision": None, "recall": None},
-                "score_l": {"model": None, "accuracy": None, "precision": None, "recall": None}}
-scores = empty_scores.copy()
-if len(gold_labels) > 0:
-    scores_s = calculate_surrogate_scores(
-        smp.model.features.loc[[int(gl.time_series_key) for gl in gold_labels], :],
-        [gl.label for gl in gold_labels],
-        sm_model.predict(
-            smp.model.features.loc[[int(gl.time_series_key) for gl in gold_labels], :])
-    )
-    scores['score_s'] = scores_s
-scores_l = calculate_surrogate_scores(
-    smp.model.features,
-    smp.model.get_definitive_labels(),
-    surrogate_predictions)
-scores['score_l'] = scores_l
+    # scores = {'score_s': scores_s, 'score_l': scores_l}
 
-# scores = {'score_s': scores_s, 'score_l': scores_l}
+    previous_step = lsl[index] if len(lsl) >= 1 else None
+    prev_scores = previous_step.scores if previous_step is not None else empty_scores
 
-previous_step = lsl[index] if len(lsl) >= 1 else None
-prev_scores = previous_step.scores if previous_step is not None else empty_scores
+    display_average_training_metrics(training_stats)
+    display_surrogate_metrics(scores, prev_scores)
 
-display_average_training_metrics(training_stats)
-display_surrogate_metrics(scores, prev_scores)
+    st.markdown('**Features used**')
+    st.write(set(smp.model.features.columns.values))
 
-st.markdown('**Features used**')
-st.write(set(smp.model.features.columns.values))
-
-with st.expander('Confusion Matrix'):
-    cm = confusion_matrix(
-        smp.model.get_definitive_labels(), surrogate_predictions,
-    )
-    st.table(cm)
+    with st.expander('Confusion Matrix'):
+        cm = confusion_matrix(
+            smp.model.get_definitive_labels(), surrogate_predictions,
+        )
+        st.table(cm)
 
 labeling_step_list = sbsl.SidebarLabelingStepList()
 labeling_step_list.show(lsl)

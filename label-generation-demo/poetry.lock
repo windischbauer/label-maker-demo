@@ -2642,6 +2642,19 @@ jinja2 = "*"
 streamlit = ">=1.2"
 
 [[package]]
+name = "streamlit-nested-layout"
+version = "0.1.1"
+description = "Enables nested layout in streamlit."
+optional = false
+python-versions = ">=3.7, !=3.9.7"
+files = [
+    {file = "streamlit-nested-layout-0.1.1.tar.gz", hash = "sha256:8b7ce4d90b76ff8f4fff2cf7b30ae262cd2c068722e5439a3618f9a412ed82fb"},
+]
+
+[package.dependencies]
+streamlit = ">=1.10.0"
+
+[[package]]
 name = "streamlit-tags"
 version = "1.2.8"
 description = "Tags custom component for Streamlit"
@@ -3049,4 +3062,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "3.11.6"
-content-hash = "ab897f42bb5db1c6718fb4cc3d87e34072de907fd5de65865f3219a943bc1f61"
+content-hash = "81c6a770a409ccc08d00c3d2ddd4405b0dbcd35370b89eb2c0b0f3390ab649c3"

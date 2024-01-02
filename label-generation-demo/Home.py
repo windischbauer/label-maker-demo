@@ -14,6 +14,7 @@
 
 import streamlit as st
 from streamlit_extras.switch_page_button import switch_page
+import streamlit_nested_layout
 
 from pages.components.authentication_service import AuthenticationService
 from util.session_constants import CURRENT_PAGE

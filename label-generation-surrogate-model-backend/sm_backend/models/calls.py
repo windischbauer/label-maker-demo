@@ -14,10 +14,11 @@
 
 from sm_backend.models.surrogate_model import SurrogateModel
 from sm_backend.models.weasel_m import WeaselM
-from sm_backend.models.t_log_reg import TorchLogisticRegression
 from sm_backend.models.plt_log_reg import PytorchLightningLogisticRegression
+from sm_backend.models.plt_prob_log_reg import PytorchLightningProbLogisticRegression
 import pandas as pd
 import io
+
 
 class Calls(SurrogateModel):
     def __init__(self):
@@ -27,6 +28,17 @@ class Calls(SurrogateModel):
         self.model = None
         print('Model cleared')
         return 'model cleared'
+
+    def init_tfproblog_reg(self):
+        print('Initializing TFLogReg')
+        print(type(self.model))
+        print(type(self.model) == PytorchLightningProbLogisticRegression)
+        if type(self.model) == PytorchLightningProbLogisticRegression:
+            print('model already initialized')
+            return "model already initialized"
+        else:
+            self.model = PytorchLightningProbLogisticRegression()
+            return "model initialized"
 
     def init_tflog_reg(self):
         print('Initializing TFLogReg')
@@ -38,7 +50,7 @@ class Calls(SurrogateModel):
         else:
             self.model = PytorchLightningLogisticRegression()
             return "model initialized"
-    
+
     def init_weasel(self):
         print('Initializing Weasel')
         print(type(self.model))
@@ -46,7 +58,7 @@ class Calls(SurrogateModel):
         if type(self.model) == WeaselM:
             print('model already initialized')
             return "model already initialized"
-        else: 
+        else:
             self.model = WeaselM()
             return "model initialized"
 
@@ -55,12 +67,8 @@ class Calls(SurrogateModel):
         feat = pd.read_json(io.StringIO(features))
         lab = pd.read_json(io.StringIO(labels))
         return self.model.apply(feat, lab, fold)
-    
+
     def predict(self, features):
         print('Predicting some Model')
         feat = pd.read_json(io.StringIO(features))
         return self.model.predict(feat)
-
-
-
-    

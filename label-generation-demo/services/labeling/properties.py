@@ -20,8 +20,10 @@ import services.persistence_service as db
 from model.model import GoldLabel
 from services.connectors.backend_connector import connect_server
 from services.labeling import labeler as lb
-from services.labeling.surrogate_models.probablistic_logistic_regression_model import TorchProbabilisticLogisticRegression
+from services.labeling.surrogate_models.probablistic_logistic_regression_model import \
+    TorchProbabilisticLogisticRegression
 from services.labeling.surrogate_models.sk_logistic_regression_model import SKLogisticRegression
+from services.labeling.surrogate_models.torch_logistic_regression import TorchLogisticRegression
 from services.labeling.surrogate_models.weasel_model import WeaselModel
 from util.session_constants import SELECTED_LABELING_TASK
 from util.string_convenience import escape_line_breaks_in_rules
@@ -67,10 +69,20 @@ class LabelModelProperties:
 
     def show(self) -> None:
         st.subheader('Snorkel Labeling')
-        self.type = st.selectbox(
+
+        model_row = row([5, 3], vertical_align='bottom')
+        self.type = model_row.selectbox(
             'Snorkel Model',
             options=['Label Model', 'Majority Model'],
             key='lm-type-sb'
+        )
+
+        tbp_options = ['abstain', 'random', 'true-random']
+        self.tie_break_policy = model_row.selectbox(
+            'Tie Break Policy',
+            options=tbp_options,
+            index=tbp_options.index(self.tie_break_policy),
+            key='lm-tie-break-sb'
         )
 
         c1, c2 = st.columns(2)
@@ -85,14 +97,6 @@ class LabelModelProperties:
                 value=self.seed,
                 key='lm-seed-ni'
             )
-
-        tbp_options = ['abstain', 'random', 'true-random']
-        self.tie_break_policy = st.selectbox(
-            'Tie Break Policy',
-            options=tbp_options,
-            index=tbp_options.index(self.tie_break_policy),
-            key='lm-tie-break-sb'
-        )
 
         self.only_selected_lrs = st.checkbox(
             'Only use selected labeling functions',
@@ -173,6 +177,7 @@ class SurrogateModelProperties:
         key = random.randint(0, 1000000000)
         st.subheader('Surrogate Model')
         types = ['SKLogisticRegression',
+                 'TorchLogisticRegression',
                  'TorchProbabilisticLogisticRegression',
                  'WeaselModel']
 
@@ -181,7 +186,10 @@ class SurrogateModelProperties:
             'Surrogate Model',
             options=types,
             index=types.index(self.type),
-            key='sm-type-sb' + str(key)
+            key='sm-type-sb' + str(key),
+            help='Please note that the TorchProbabilisticLogisticRegression utilizes Monte Carlo (MC) Dropout. \
+                MC Dropout involves enabling dropout during both training and inference, which is why \
+                it seems like "training" during prediction. This means that the model changes through predictions.'
         )
 
         new_server = model_row.button('Restart Surrogate Model Training', key='sm-restart-btn' + str(key),
@@ -191,7 +199,15 @@ class SurrogateModelProperties:
         else:
             self.server = connect_server()
 
-        self.incl_gold = st.checkbox(
+        settings_row = row([5, 3], vertical_align='bottom')
+
+        self.only_lm_features = settings_row.checkbox(
+            'Only use the same features as the Snorkel Model',
+            value=self.only_lm_features,
+            key='sm-only-lm-features-cb' + str(key)
+        )
+
+        self.incl_gold = settings_row.checkbox(
             'Use Gold Labels (where available)',
             help='Use gold labels instead of labeling model labels \
                 where they are available. This might cause different \
@@ -205,11 +221,6 @@ class SurrogateModelProperties:
             value=False if self.type == 'WeaselModel' else self.incl_gold,
             key='sm-incl-gold-cb' + str(key),
             # disabled=self.type == 'WeaselModel'
-        )
-        self.only_lm_features = st.checkbox(
-            'Only use the same features as the Snorkel Model',
-            value=self.only_lm_features,
-            key='sm-only-lm-features-cb' + str(key)
         )
 
         if self.only_lm_features:
@@ -234,6 +245,13 @@ class SurrogateModelProperties:
                     **self.model)
             else:
                 self.model = SKLogisticRegression()
+
+        elif self.type == 'TorchLogisticRegression':
+            if self.model is not None:
+                self.model = TorchLogisticRegression(server=self.server,
+                                                     **self.model)
+            else:
+                self.model = TorchLogisticRegression(server=self.server)
 
         elif self.type == 'TorchProbabilisticLogisticRegression':
             if self.model is not None:
@@ -271,6 +289,16 @@ class SurrogateModelProperties:
             if self.incl_gold:
                 for gl in gold_labels:
                     y_labels.loc[int(gl.time_series_key), 0] = gl.label
+
+        elif self.type == 'TorchLogisticRegression':
+            y_labels = pd.DataFrame(
+                labeler.predicted_probs, index=labeler.predicted_labels[0]
+            )
+
+            if self.incl_gold:
+                for gl in gold_labels:
+                    y_labels.loc[int(gl.time_series_key), :] = 0.0
+                    y_labels.loc[int(gl.time_series_key), gl.label] = 1.0
 
         elif self.type == 'TorchProbabilisticLogisticRegression':
             y_labels = pd.DataFrame(
@@ -312,5 +340,3 @@ class SurrogateModelProperties:
                 if str(gl.time_series_key) == str(predictions[0][i]):
                     y_labels[i] = predictions[1][i]
         return y_labels
-
-

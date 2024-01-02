@@ -17,7 +17,7 @@ import numpy as np
 import streamlit as st
 
 
-class TorchProbabilisticLogisticRegression:
+class TorchLogisticRegression:
 
     def __init__(self,
                  server,
@@ -32,7 +32,7 @@ class TorchProbabilisticLogisticRegression:
 
     def apply(self):
         # st.write('applying tflogreg model')
-        self.server.init_tfproblog_reg()
+        self.server.init_tflog_reg()
         fold = 5
         result = self.server.apply(self.features.to_json(), self.labels.to_json(), self.folds)
         return result
