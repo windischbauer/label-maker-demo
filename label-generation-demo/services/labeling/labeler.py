@@ -82,6 +82,9 @@ class Labeler:
                 lf = "def {}(x):\n{}".format(
                     rule_name, self.wrap_lookup(rule.rule, features))
 
+                if lf.count('if') > lf.count('else'):
+                    lf += '\n\treturn ABSTAIN'
+
                 compiled = compile(lf, filename="<string>", mode="exec")
                 exec(compiled)
                 lfexec = locals()[rule_name]
