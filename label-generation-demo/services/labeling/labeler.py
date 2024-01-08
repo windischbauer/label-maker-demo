@@ -12,6 +12,7 @@
 #  implied. See the License for the specific language governing
 #  permissions and limitations under the License.
 
+import re
 import streamlit as st
 from snorkel.labeling import PandasLFApplier, LFAnalysis, LabelingFunction
 from snorkel.labeling.model import LabelModel, MajorityLabelVoter
@@ -94,7 +95,10 @@ class Labeler:
 
     def wrap_lookup(self, rule, features):
         for f in features:
-            rule = rule.replace(f, 'lookup(x, "' + f + '", feature_matrix)')
+            def replace_feature(matchobj):
+                return str(matchobj.group(0)).replace(f, 'lookup(x, "' + f + '", feature_matrix)')
+
+            rule = re.sub(r'([(<>=)&| ]|^)' + f + r'([(<>=)&| ]|$)', replace_feature, rule)
         return rule
 
     def apply(self):
