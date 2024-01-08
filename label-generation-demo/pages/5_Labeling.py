@@ -59,6 +59,7 @@ if len(rules) < 3:
 
 selected_lt = db.load_cache(const.SELECTED_LABELING_TASK)
 df = db.load_cache(const.LABELING_RUN_DATAFRAME)
+# df = None
 # st.write(df)
 # if df is None:
 #     data_provider = dp.DataProvider(
@@ -124,6 +125,7 @@ st.subheader('Results',
 filter_gl = GoldLabel.labeling_task_id == st.session_state[
     const.SELECTED_LABELING_TASK].id
 gold_labels = db.load(GoldLabel, filter=filter_gl)
+# st.write(gold_labels)
 
 sm_model = smp.apply(labeler)
 training_stats = sm_model.apply()
@@ -158,53 +160,66 @@ if df is None:
         df.at[itm[0], 'timeseries'] = itm_ts
 
 
-def update_training_label(df):
-    global smp
-    if smp.incl_gold:
-        if 'training_label' not in df.columns:
-            df.insert(4, 'training_label', smp.model.get_definitive_labels())
+if smp.incl_gold:
+    if 'training_label' not in df.columns:
+        df.insert(4, 'training_label', smp.model.get_definitive_labels())
     else:
-        if 'training_label' in df.columns:
-            df = df.drop(columns=['training_label'])
+        df['training_label'] = smp.model.get_definitive_labels()
+else:
+    if 'training_label' in df.columns:
+        df = df.drop(columns=['training_label'])
 
-
-update_training_label(df)
-with st.expander('Results'):
-    df['surrogate model'] = surrogate_predictions
-    dfe = st.data_editor(
-        df,
-        column_config={
-            'gold_label': st.column_config.SelectboxColumn(
-                'Gold Label',
-                help='Gold label introduced by hand',
-                options=available_labels,
-                width='small'
-            ),
-            'timeseries': st.column_config.LineChartColumn(
-                'Time Series',
-                help='Time Series',
-                width='medium',
-            ),
-            'training_label': st.column_config.Column(
-                'Training Label',
-            )
-        },
-        disabled=False,
-        use_container_width=True,
-        on_change=(lambda df: db.cache(df, const.LABELING_RUN_DATAFRAME)),
-        args=(df,),
-        key='lb_dfe'
-    )
+df['label model'] = labeler_predictions
+df['label model proba'] = labeler.predicted_probs.max(axis=1)
+df['surrogate model'] = surrogate_predictions
+dfe = st.data_editor(
+    df,
+    column_config={
+        'mkey': st.column_config.Column(
+            'Key',
+            disabled=True,
+        ),
+        'label model': st.column_config.Column(
+            'Label Model',
+            disabled=True,
+        ),
+        'label model proba': st.column_config.Column(
+            'LM Prob',
+            disabled=True,
+        ),
+        'surrogate model': st.column_config.Column(
+            'Surrogate Model',
+            disabled=True,
+        ),
+        'gold_label': st.column_config.SelectboxColumn(
+            'Gold Label',
+            help='Gold label introduced by hand',
+            options=available_labels,
+            width='small'
+        ),
+        'timeseries': st.column_config.LineChartColumn(
+            'Time Series',
+            help='Time Series',
+            width='medium',
+        ),
+        'training_label': st.column_config.Column(
+            'Training Label',
+            disabled=True,
+        )
+    },
+    disabled=False,
+    use_container_width=True,
+    key='lb_dfe'
+)
 
 changed_gold_labels = dfe.loc[dfe['gold_label'].notnull()].loc[:, ['gold_label']]
 
 keys = dict([(str(gl.time_series_key), {'label': gl.label, 'id': gl.id})
              for gl in gold_labels])
-
+change = False
 for i in changed_gold_labels.index.values:
     if str(i) in keys:
         if keys[str(i)]['label'] != int(changed_gold_labels.loc[i].values[0].split(' ')[0]):
-            # st.write('changed')
             changed_gold = GoldLabel(
                 id=keys[str(i)]['id'],
                 labeling_task_id=st.session_state[const.SELECTED_LABELING_TASK].id,
@@ -213,6 +228,7 @@ for i in changed_gold_labels.index.values:
                 user_id=db.load_cache('username')
             )
             db.update(entity=changed_gold)
+            change = True
     elif changed_gold_labels.loc[i].values[0].split(' ')[0] == 'None':
         # Delete from db
         pass
@@ -224,7 +240,11 @@ for i in changed_gold_labels.index.values:
             user_id=db.load_cache('username')
         )
         db.save(new_gold)
+        change = True
+
+if change:
     db.cache(dfe, const.LABELING_RUN_DATAFRAME)
+    st.rerun()
 
 goto = dfe.loc[dfe['go to'] == True]
 if len(goto) > 0:

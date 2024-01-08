@@ -131,12 +131,6 @@ if dfall is None or statsdf is None:
 dfall['go_to'] = False
 statsdf['go_to'] = False
 
-
-def cache_dfs(df, sdf):
-    db.cache(df, LABELING_RESULT_DATAFRAME)
-    db.cache(sdf, LABELING_RUN_DATAFRAME)
-
-
 st.markdown('### Scores per Labeling Run :runner:')
 df_stats = st.data_editor(
     statsdf,
@@ -204,8 +198,6 @@ df_stats = st.data_editor(
         'type_s', 'model_s', 'accuracy_s', 'precision_s', 'recall_s',
         'go_to'
     ],
-    on_change=cache_dfs,
-    args=(dfall, statsdf,),
     use_container_width=True,
 )
 
@@ -213,6 +205,10 @@ st.markdown('### Labels per Timeseries :chart_with_upwards_trend:')
 df_go_to = st.data_editor(
     dfall,
     column_config={
+                      'mkey': st.column_config.Column(
+                          'Key',
+                          disabled=True,
+                      ),
                       'timeseries': st.column_config.LineChartColumn(
                           'Time Series (down sampled)',
                           width='medium',
@@ -224,15 +220,14 @@ df_go_to = st.data_editor(
                           options=available_labels,
                           width='small'
                       ),
-                  } | {coln: st.column_config.Column(
-        coln + '\n  ' + 'test',
-        width='small',
-        help=coln + ' ',
-        disabled=True
-    ) for coln in colnames},
-    # column_config=colname_conf,
-    on_change=cache_dfs,
-    args=(dfall, statsdf,),
+                  } | {
+                      coln: st.column_config.Column(
+                          coln,
+                          width='small',
+                          help=coln,
+                          disabled=True
+                      ) for coln in colnames
+                  },
     height=600,
     use_container_width=True,
 )
@@ -261,6 +256,8 @@ if len(stats_goto) > 0:
 
     switch_page('Labeling')
 
+changed = False
+
 for i in changed_gold_labels.index.values:
     if str(i) in keys:
         if keys[str(i)]['label'] != int(changed_gold_labels.loc[i].values[0].split(' ')[0]):
@@ -272,6 +269,8 @@ for i in changed_gold_labels.index.values:
                 user_id=db.load_cache('username')
             )
             db.update(entity=changed_gold)
+            changed = True
+
     else:
         new_gold = GoldLabel(
             labeling_task_id=st.session_state[SELECTED_LABELING_TASK].id,
@@ -280,4 +279,8 @@ for i in changed_gold_labels.index.values:
             user_id=db.load_cache('username')
         )
         db.save(new_gold)
+        changed = True
+
+if changed:
     db.cache(df_go_to, LABELING_RESULT_DATAFRAME)
+    st.rerun()
